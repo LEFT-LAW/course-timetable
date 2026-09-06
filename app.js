@@ -178,6 +178,15 @@
   }
 
   /* ---------------- 课表视图 ---------------- */
+  var ROW_H = 42;
+  // 依据当前列宽自适应字体：让每行尽量容纳 4~5 个汉字，减少行数与错乱折行
+  function measureFontSize() {
+    var mw = main.clientWidth - 28;      // main 左右各 14px padding
+    var colW = Math.max(30, (mw - 42) / 7); // 42px = 节次栏宽
+    var fs = (colW - 6) / 4.8;
+    return Math.max(8.5, Math.min(12, fs));
+  }
+
   function renderWeek() {
     var today = todayLocalISO();
     var curWeek = currentWeekNum();
@@ -191,6 +200,12 @@
       main.innerHTML = html;
       return;
     }
+
+    var fs = measureFontSize();
+    var nLH = +(fs * 1.28).toFixed(2);          // 课名行高
+    var locF = Math.max(7.5, fs - 1.6);         // 地址字号略小
+    var locLH = +(locF * 1.25).toFixed(2);      // 地址行高
+    var locHpx = Math.ceil(locLH);
 
     html += '<div class="week-toolbar">'
       + '<div class="wk-nav"><button id="wkPrev" aria-label="上一周">‹</button><button id="wkNext" aria-label="下一周">›</button></div>'
@@ -213,40 +228,64 @@
     // 节次栏
     html += '<div class="grid-gutter">';
     for (var p = 1; p <= st.periods.length; p++) {
-      html += '<span style="top:' + ((p - 1) * 42) + 'px">' + pad2(p) + ' · ' + periodStart(p).slice(0, 5) + '</span>';
+      html += '<span style="top:' + ((p - 1) * ROW_H) + 'px">' + pad2(p) + ' · ' + periodStart(p).slice(0, 5) + '</span>';
     }
     html += '</div>';
 
+    var todayCol = new Date().getDay() || 7;
     for (var d2 = 1; d2 <= 7; d2++) {
       var dayList = weekEntries.filter(function (e) { return e.day === d2; });
       var layout = layoutDay(dayList);
       html += '<div class="grid-col">';
-      var isWeekendCol = d2 >= 6;
       // 空格点击添加
       for (var p2 = 1; p2 <= st.periods.length; p2++) {
-        html += '<button class="gcell' + (WEEK === curWeek && d2 === (new Date().getDay() || 7) ? ' is-today-col' : '') + '"'
+        html += '<button class="gcell' + (WEEK === curWeek && d2 === todayCol ? ' is-today-col' : '') + '"'
           + ' data-add="' + d2 + ',' + p2 + '"'
-          + ' style="top:' + ((p2 - 1) * 42) + 'px"' + ' aria-label="添加课程"></button>';
+          + ' style="top:' + ((p2 - 1) * ROW_H) + 'px"' + ' aria-label="添加课程"></button>';
       }
-      // 课程卡片
+      // 课程卡片：名称按“整行”裁切，地址独占最下一行，绝不与课名重叠
       dayList.forEach(function (e) {
         var pos = layout[e.id] || { n: 1, i: 0 };
         var leftPct = (100 / pos.n) * pos.i;
         var widthPct = 100 / pos.n;
-        var top = (e.start - 1) * 42 + 2;
-        var height = (e.end - e.start + 1) * 42 - 4;
-        var isToday = WEEK === curWeek && d2 === (new Date().getDay() || 7);
-        void isToday; void isWeekendCol;
+        var top = (e.start - 1) * ROW_H + 2;
+        var rows = e.end - e.start + 1;
+        var chipH = rows * ROW_H - 4;
+        var inner = chipH - 4;                    // 上下各 2px 内边距
+        var budget = inner - (locHpx + 1);        // 留给课名的高度
+        var showLoc = !!(e.location && budget >= nLH);
+        if (!showLoc) budget = inner;
+        var lines = Math.max(1, Math.floor(budget / nLH));
+        var maxNameH = +(lines * nLH).toFixed(2);
         html += '<button class="course-chip" data-chip="' + e.id + '"'
-          + ' style="background:' + e.color + ';color:#fff;top:' + top + 'px;height:' + height + 'px;left:' + leftPct.toFixed(3) + '%;width:' + widthPct.toFixed(3) + '%">'
-          + '<span class="c-name">' + esc(e.name) + '</span>'
-          + (e.location ? '<span class="c-loc">' + esc(e.location) + '</span>' : '')
+          + ' style="background:' + e.color + ';color:#fff;top:' + top + 'px;height:' + chipH + 'px;left:' + leftPct.toFixed(3) + '%;width:' + widthPct.toFixed(3) + '%;padding:2px 3px">'
+          + '<span class="c-name" style="font-size:' + fs.toFixed(2) + 'px;line-height:' + nLH + 'px;max-height:' + maxNameH + 'px;overflow:hidden;overflow-wrap:anywhere">' + esc(e.name) + '</span>'
+          + (showLoc ? '<span class="c-loc" style="font-size:' + locF.toFixed(2) + 'px;line-height:' + locLH + 'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(e.location) + '</span>' : '')
           + '</button>';
       });
       html += '</div>';
     }
     html += '</div></div>';
     main.innerHTML = html;
+
+    // 第二遍布局：课程名下若有空余，允许地址换行完整显示（绝不与课名重叠）
+    main.querySelectorAll('.course-chip').forEach(function (chip) {
+      var loc = chip.querySelector('.c-loc');
+      if (!loc) return;
+      if (loc.scrollWidth <= loc.clientWidth + 1) return;  // 单行放得下就不用换行
+      var cs = window.getComputedStyle(loc);
+      var lh = parseFloat(cs.lineHeight);
+      var chipR = chip.getBoundingClientRect();
+      var lR = loc.getBoundingClientRect();
+      var locBottom = lR.bottom - chipR.top;              // 相对卡片顶部
+      var spareLines = Math.floor((chipR.height - 2 - locBottom) / lh);
+      if (spareLines > 0) {
+        loc.style.whiteSpace = 'normal';
+        loc.style.overflow = 'hidden';
+        loc.style.textOverflow = 'clip';
+        loc.style.maxHeight = ((spareLines + 1) * lh) + 'px';
+      }
+    });
 
     $('#wkPrev').addEventListener('click', function () { WEEK = clampWeek(WEEK - 1); render(); });
     $('#wkNext').addEventListener('click', function () { WEEK = clampWeek(WEEK + 1); render(); });

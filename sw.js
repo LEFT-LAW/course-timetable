@@ -1,5 +1,5 @@
 /* Service Worker：离线缓存（Cache-first + 后台更新） */
-const CACHE = 'timetable-v1';
+const CACHE = 'timetable-v2';
 const ASSETS = [
   './',
   './index.html',

@@ -122,14 +122,12 @@ main { flex: 1; padding: 12px 14px calc(var(--tabbar-h) + var(--safe-bottom) + 1
 }
 .gcell.is-today-col { background: rgba(255, 244, 224, 0.45); }
 .course-chip {
-  position: absolute; z-index: 2; border-radius: 10px; padding: 3px 5px;
-  font-size: 11px; line-height: 1.25; overflow: hidden;
-  display: flex; flex-direction: column; gap: 1px;
-  border: none; text-align: left; width: 100%; color: inherit;
+  position: absolute; z-index: 2; border-radius: 9px;
+  overflow: hidden;
+  border: none; text-align: left; color: inherit;
 }
-.course-chip .c-name { font-weight: 600; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.course-chip .c-loc { font-size: 9.5px; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.course-chip.collide { opacity: 0.35; }
+.course-chip .c-name { font-weight: 600; display: block; }
+.course-chip .c-loc { opacity: 0.85; display: block; }
 
 /* ---------- 面板/卡片 ---------- */
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
