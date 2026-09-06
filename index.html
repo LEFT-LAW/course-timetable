@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>纯净课表</title>
+<meta name="description" content="纯净、离线、可安装到主屏幕的课表">
+<meta name="theme-color" content="#4f7cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="课表">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./app.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <h1>课表</h1>
+    </div>
+    <button id="topAddBtn" class="btn-ghost" aria-label="添加课程">＋</button>
+  </header>
+
+  <main id="main"></main>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="week" class="tab active"><span>课表</span></button>
+    <button data-tab="today" class="tab"><span>今日</span></button>
+    <button data-tab="courses" class="tab"><span>课程</span></button>
+    <button data-tab="settings" class="tab"><span>设置</span></button>
+  </nav>
+</div>
+
+<div id="modalRoot" class="modal-root hidden"></div>
+<div id="toast" class="toast hidden"></div>
+
+<input type="file" id="fileXlsx" accept=".xlsx" class="hidden-input" hidden>
+<input type="file" id="fileJson" accept=".json,application/json" class="hidden-input" hidden>
+
+<script src="./lib/xlsx.js"></script>
+<script src="./lib/timetable-import.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
