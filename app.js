@@ -179,6 +179,18 @@
 
   /* ---------------- 课表视图 ---------------- */
   var ROW_H = 42;
+  var GAP_H = 30;                       // 大课间空隙高度（午/晚）
+  var BREAKS = { 4: true, 9: true };    // 第4、9节后插入空隙
+  // 第 p 节课顶部的 y 坐标（含前面所有空隙）
+  function yStart(p) {
+    var y = 0, i;
+    for (i = 1; i < p; i++) {
+      y += ROW_H;
+      if (BREAKS[i]) y += GAP_H;
+    }
+    return y;
+  }
+  function gridTotalH(n) { return yStart(n) + ROW_H; }
   // 依据当前列宽自适应字体：让每行尽量容纳 4~5 个汉字，减少行数与错乱折行
   function measureFontSize() {
     var mw = main.clientWidth - 28;      // main 左右各 14px padding
@@ -194,6 +206,7 @@
     var monday = weekMondayDays(WEEK);
     var inTerm = (dayNumOfISO(today) - w1) >= 0;
     var html = '';
+    var N = st.periods.length;
 
     if (!st.entries.length) {
       html += firstRunHTML();
@@ -225,10 +238,14 @@
 
     var weekEntries = entriesOfWeek(WEEK);
     html += '<div style="display:flex;align-items:stretch">';
-    // 节次栏
+    // 节次栏：每节显示 上课/下课 两行时间
     html += '<div class="grid-gutter">';
-    for (var p = 1; p <= st.periods.length; p++) {
-      html += '<span style="top:' + ((p - 1) * ROW_H) + 'px">' + pad2(p) + ' · ' + periodStart(p).slice(0, 5) + '</span>';
+    for (var p = 1; p <= N; p++) {
+      var pr = st.periods[p - 1];
+      html += '<div class="gblk" style="top:' + yStart(p) + 'px;height:' + ROW_H + 'px">'
+        + '<span class="t-up">' + esc(pr.s) + '</span>'
+        + '<span class="t-dn">' + esc(pr.e) + '</span>'
+        + '</div>';
     }
     html += '</div>';
 
@@ -236,21 +253,20 @@
     for (var d2 = 1; d2 <= 7; d2++) {
       var dayList = weekEntries.filter(function (e) { return e.day === d2; });
       var layout = layoutDay(dayList);
-      html += '<div class="grid-col">';
+      html += '<div class="grid-col" style="height:' + gridTotalH(N) + 'px">';
       // 空格点击添加
-      for (var p2 = 1; p2 <= st.periods.length; p2++) {
+      for (var p2 = 1; p2 <= N; p2++) {
         html += '<button class="gcell' + (WEEK === curWeek && d2 === todayCol ? ' is-today-col' : '') + '"'
           + ' data-add="' + d2 + ',' + p2 + '"'
-          + ' style="top:' + ((p2 - 1) * ROW_H) + 'px"' + ' aria-label="添加课程"></button>';
+          + ' style="top:' + yStart(p2) + 'px"' + ' aria-label="添加课程"></button>';
       }
       // 课程卡片：名称按“整行”裁切，地址独占最下一行，绝不与课名重叠
       dayList.forEach(function (e) {
         var pos = layout[e.id] || { n: 1, i: 0 };
         var leftPct = (100 / pos.n) * pos.i;
         var widthPct = 100 / pos.n;
-        var top = (e.start - 1) * ROW_H + 2;
-        var rows = e.end - e.start + 1;
-        var chipH = rows * ROW_H - 4;
+        var top = yStart(e.start) + 2;
+        var chipH = yStart(e.end) + ROW_H - yStart(e.start) - 4;
         var inner = chipH - 4;                    // 上下各 2px 内边距
         var budget = inner - (locHpx + 1);        // 留给课名的高度
         var showLoc = !!(e.location && budget >= nLH);
@@ -268,7 +284,22 @@
     html += '</div></div>';
     main.innerHTML = html;
 
-    // 第二遍布局：课程名下若有空余，允许地址换行完整显示（绝不与课名重叠）
+    // 为每个“节”画行分隔线；大课间空隙的两侧各留一条线，间隙区不画线
+    main.querySelectorAll('.grid-col').forEach(function (col) {
+      var bounds = [];
+      for (var p3 = 1; p3 <= N; p3++) {
+        bounds.push(yStart(p3) + ROW_H - 1);            // 每节底部
+        if (BREAKS[p3]) bounds.push(yStart(p3 + 1));    // 空隙结束处的下一节顶线
+      }
+      bounds.forEach(function (y) {
+        var d = document.createElement('div');
+        d.className = 'lsep';
+        d.style.top = y + 'px';
+        col.appendChild(d);
+      });
+    });
+
+    // 课程名下若有空余，允许地址换行完整显示（绝不与课名重叠）
     main.querySelectorAll('.course-chip').forEach(function (chip) {
       var loc = chip.querySelector('.c-loc');
       if (!loc) return;
